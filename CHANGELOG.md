@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Dates are in `dd-mm-yyyy` format.
 
+## [2.4.3] - 25-11-2025
+
+### Changed
+
+- Alignment to the UI guidelines:
+    - Standard graphics API use instead of streaming one for:
+        - `SIGN_PSBT` operation with up to 16 external outputs
+        - `SIGN_MESSAGE` operation with message split handled by graphics library and Line Feed allowed
+    - Security risk information is shown before transaction review and made interruptable, no "suspicious" path warning for `GET_EXTENDED_PUBKEY` operation
+    - Ticker moved to the right for swap operations, other minor UI updates
+
+### Added
+
+- Derivation Path Hardening:
+    - New master key fingerprint syscall use, `HAVE_APPLICATION_FLAG_DERIVE_MASTER` is removed
+    - BIP-32  derivation paths is reinforced
+
 ## [2.4.2] - 08-09-2025
 
 ### Added
