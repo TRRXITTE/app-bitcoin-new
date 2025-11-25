@@ -399,10 +399,10 @@ static bool __attribute__((noinline)) get_and_verify_key_info(dispatcher_context
     // it could be a collision on the fingerprint; we verify that we can actually generate
     // the same pubkey
     serialized_extended_pubkey_t derived_pubkey;
-    if (0 > get_extended_pubkey_at_path(key_info.master_key_derivation,
-                                        key_info.master_key_derivation_len,
-                                        BIP32_PUBKEY_VERSION,
-                                        &derived_pubkey)) {
+    if (CX_OK != get_extended_pubkey_at_path(key_info.master_key_derivation,
+                                             key_info.master_key_derivation_len,
+                                             BIP32_PUBKEY_VERSION,
+                                             &derived_pubkey)) {
         return false;
     }
 
