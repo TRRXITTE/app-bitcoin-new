@@ -17,9 +17,6 @@ Dates are in `dd-mm-yyyy` format.
         - `SIGN_MESSAGE` operation with message split handled by graphics library and Line Feed allowed
     - Security risk information is shown before transaction review and made interruptable, no "suspicious" path warning for `GET_EXTENDED_PUBKEY` operation
     - Ticker moved to the right for swap operations, other minor UI updates
-
-### Added
-
 - Derivation Path Hardening:
     - New master key fingerprint syscall use, `HAVE_APPLICATION_FLAG_DERIVE_MASTER` is removed
     - BIP-32  derivation paths is reinforced
