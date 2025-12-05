@@ -150,35 +150,25 @@ bool ui_display_register_wallet_policy(
     for (size_t i = 0; i < wallet_header->n_keys; i++) {
         state->keys_info[i] = (*keys_info)[i];
 #ifdef SCREEN_SIZE_WALLET
-        const char labels[3][20] = {"internal", "external", "unspendable"};
+        const char labels[3][20] = {"Internal", "External", "Unspendable"};
 #else
-        const char labels[3][20] = {"ours", "theirs", "dummy"};
+        const char labels[3][20] = {"Our", "Their", "Dummy"};
 #endif
+        unsigned int num = 0;
         switch ((*keys_type)[i]) {
             case PUBKEY_TYPE_INTERNAL:
-                snprintf(state->keys_label[i],
-                         sizeof(state->keys_label[i]),
-                         "Key @%u, %s",
-                         i,
-                         labels[0]);
+                num = 0;
                 break;
             case PUBKEY_TYPE_EXTERNAL:
-                snprintf(state->keys_label[i],
-                         sizeof(state->keys_label[i]),
-                         "Key @%u, %s",
-                         i,
-                         labels[1]);
+                num = 1;
                 break;
             case PUBKEY_TYPE_UNSPENDABLE:
-                snprintf(state->keys_label[i],
-                         sizeof(state->keys_label[i]),
-                         "Key @%u, %s",
-                         i,
-                         labels[2]);
+                num = 2;
                 break;
             default:
                 LEDGER_ASSERT(false, "Unreachable code");
         }
+        snprintf(state->keys_label[i], sizeof(state->keys_label[i]), "%s key@%u", labels[num], i);
     }
 
     ui_display_register_wallet_policy_flow();
