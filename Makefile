@@ -159,6 +159,12 @@ APP_SOURCE_PATH += src
 # Allow usage of function from lib_standard_app/crypto_helpers.c
 APP_SOURCE_FILES += ${BOLOS_SDK}/lib_standard_app/crypto_helpers.c
 
+########################################
+#          Features enablers           #
+########################################
+# Converting build warnings to errors
+CFLAGS   += -Werror
+
 include $(BOLOS_SDK)/Makefile.standard_app
 
 # Makes a detailed report of code and data size in debug/size-report.txt
