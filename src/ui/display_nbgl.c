@@ -11,7 +11,6 @@
 
 static const char *confirmed_status;  // text displayed in confirmation page (after long press)
 static const char *rejected_status;   // text displayed in rejection page (after reject confirmed)
-static bool show_message_start_page;
 
 /* Graphical resources (GA) used by the application and NBGL */
 #ifdef SCREEN_SIZE_WALLET
@@ -24,21 +23,43 @@ const char GA_SIGN_MESSAGE[] = "Sign message";
 const char GA_REGISTER_ACCOUNT[] = "Register account";
 #endif /* #ifdef SCREEN_SIZE_WALLET */
 
-const char GA_UNVERIFIED_INPUTS[] = "Unverified inputs\nUpdate your wallet software";
+#ifdef SCREEN_SIZE_WALLET
+const char GA_SECURITY_RISK_TITLE[] = "Security risk detected";
+const char GA_WARN_HIGH_FEES_TITLE[] = "High fees warning";
+const char GA_RISK_EXTERNAL_INPUTS[] =
+    "This transaction has external inputs, and could spend more than you think.";
+const char GA_RISK_NON_STD_SIGHASH[] =
+    "This transaction uses non-standard signing rules (modified sighash), and could spend more "
+    "than you think.";
+const char GA_WARN_HIGH_FEES[] =
+    "You're about to review a transaction with fees above 10\% of the total amount.";
+
+#else
+const char GA_SECURITY_RISK_TITLE[] = "Security risk";
+const char GA_WARN_HIGH_FEES_TITLE[] = "High fees warning";
+const char GA_RISK_EXTERNAL_INPUTS[] = "There are external inputs\nReject if not sure";
+const char GA_RISK_NON_STD_SIGHASH[] = "Non-default sighash";
+const char GA_WARN_HIGH_FEES[] = "Fees are above 10%\n of total amount";
+#endif
+
+const char GA_BACK_TO_SAFETY[] = "Back to safety";
+const char GA_CONTINUE_ANYWAY[] = "Continue anyway";
+const char GA_RISK_UNVERIFIED_INPUTS[] = "Unverified inputs\nUpdate your wallet software";
 const char GA_REVIEW_TRANSACTION[] = "Review transaction\nto send Bitcoin";
 const char GA_REVIEW_MESSAGE[] = "Review message";
 const char GA_LOADING_TRANSACTION[] = "Loading transaction";
+const char GA_SIGNING_TRANSACTION[] = "Signing transaction";
 const char GA_LOADING_MESSAGE[] = "Loading message";
 
-#define N_UX_PAIRS 18
+#define N_UX_PAIRS 51
 
 static nbgl_layoutTagValue_t pairs[N_UX_PAIRS];
+static unsigned int n_pairs;
 static nbgl_layoutTagValueList_t pairList;
 
-static nbgl_genericContents_t genericContent;
-static nbgl_content_t contentList[4];
-
 extern bool G_was_processing_screen_shown;
+
+static void finish_transaction_flow(bool choice);
 
 // ux_flow_response
 static void ux_flow_response_false(void) {
@@ -116,119 +137,68 @@ static void start_transaction_callback(bool confirm) {
     }
 }
 
-static void generic_content_callback(int token, uint8_t index, int page) {
-    UNUSED(index);
-    UNUSED(page);
-    switch (token) {
-        case REVIEW_CONFIRM:
-            status_operation_callback(true);
-            break;
-        default:
-            PRINTF("Unhandled token : %d", token);
-    }
-}
-
-static void finish_transaction_flow(bool choice) {
-    if (choice) {
-        nbgl_useCaseReviewStreamingFinish(GA_SIGN_TRANSACTION,
-                                          start_processing_transaction_callback);
-    } else {
-        status_transaction_cancel();
-    }
-}
-
-void ui_accept_transaction_flow(bool is_self_transfer) {
-    // Setup list
-    pairList.nbMaxLinesForValue = 0;
-    pairList.pairs = pairs;
-
-    if (!is_self_transfer) {
-        pairs[0].item = "Fees";
-        pairs[0].value = g_ui_state.validate_transaction.fee;
-
-        pairList.nbPairs = 1;
-    } else {
-        pairs[0].item = "Amount";
-        pairs[0].value = "Self-transfer";
-
-        pairs[1].item = "Fees";
-        pairs[1].value = g_ui_state.validate_transaction.fee;
-
-        pairList.nbPairs = 2;
-    }
-
-    nbgl_useCaseReviewStreamingContinue(&pairList, finish_transaction_flow);
-}
-
 #define COMBINE(a, b) a b
 
 // create the string "0 <coind_id> (self-transfer)"
 #define SELF_TRANSFER_DESCRIPTION COMBINE("0 ", COMBINE(COIN_COINID_SHORT, " (self-transfer)"))
 
-void ui_accept_transaction_simplified_flow(void) {
-    _Static_assert(N_UX_PAIRS >= 9, "Insufficient pairs for this flow");
-
+void ui_display_transaction_simplified_flow_init(void) {
+    /* 1 From + MAX_EXT_OUTPUT_SIMPLIFIED_NUMBER*3 + 1 Fees + 1 High fees */
+    _Static_assert(N_UX_PAIRS >= (1 + MAX_EXT_OUTPUT_SIMPLIFIED_NUMBER * 3 + 1 + 1),
+                   "Insufficient pairs for this flow");
     // Setup list
     pairList.nbMaxLinesForValue = 0;
     pairList.pairs = pairs;
+    n_pairs = 0;
 
-    int n_pairs = 0;
+    ui_validate_transaction_state_t *state = (ui_validate_transaction_state_t *) &g_ui_state;
 
-    // Add warning screens for unverified inputs, external inputs or non-default sighash
-    if (g_ui_state.validate_transaction_simplified.warnings.missing_nonwitnessutxo) {
-        pairs[n_pairs++] = (nbgl_contentTagValue_t){.item = GA_UNVERIFIED_INPUTS,
-                                                    .value = "",
-                                                    .centeredInfo = true,
-                                                    .valueIcon = &ICON_APP_IMPORTANT};
-    }
-    if (g_ui_state.validate_transaction_simplified.warnings.external_inputs) {
-        pairs[n_pairs++] =
-            (nbgl_contentTagValue_t){.item = "There are external inputs\nReject if not sure",
-                                     .value = "",
-                                     .centeredInfo = true,
-                                     .valueIcon = &ICON_APP_IMPORTANT};
-    }
-    if (g_ui_state.validate_transaction_simplified.warnings.non_default_sighash) {
-        pairs[n_pairs++] =
-            (nbgl_contentTagValue_t){.item = "Non-default sighash\nReject if not sure",
-                                     .value = "",
-                                     .centeredInfo = true,
-                                     .valueIcon = &ICON_APP_IMPORTANT};
-    }
-
-    if (g_ui_state.validate_transaction_simplified.has_wallet_policy) {
+    if (state->has_wallet_policy) {
         pairs[n_pairs++] = (nbgl_layoutTagValue_t){
             .item = "From",
-            .value = g_ui_state.validate_transaction_simplified.wallet_policy_name,
+            .value = state->wallet_policy_name,
         };
     }
+}
 
-    if (!g_ui_state.validate_transaction_simplified.is_self_transfer) {
-        pairs[n_pairs++] = (nbgl_layoutTagValue_t){
-            .item = "Amount",
-            .value = g_ui_state.validate_transaction_simplified.amount,
-        };
+void ui_display_transaction_simplified_flow_add(void) {
+    ui_validate_transaction_state_t *state = (ui_validate_transaction_state_t *) &g_ui_state;
+
+    unsigned int output_index = state->output_index;
+    if (!state->is_self_transfer) {
+        if (state->n_outputs > 1) {
+            pairs[n_pairs++] =
+                (nbgl_layoutTagValue_t){.item = "Transaction output",
+                                        .value = state->output_index_str[output_index],
+                                        .forcePageStart = true};
+        }
+        pairs[n_pairs++] = (nbgl_layoutTagValue_t){.item = "Amount",
+                                                   .value = state->amount[output_index],
+                                                   .forcePageStart = false};
 
         pairs[n_pairs++] = (nbgl_layoutTagValue_t){
             .item = "To",
-            .value = g_ui_state.validate_transaction_simplified.address_or_description,
+            .value = state->address_or_description[output_index],
         };
     } else {
         pairs[n_pairs++] =
             (nbgl_layoutTagValue_t){.item = "Amount", .value = SELF_TRANSFER_DESCRIPTION};
     }
+}
 
-    pairs[n_pairs++] = (nbgl_layoutTagValue_t){
-        .item = "Fees",
-        .value = g_ui_state.validate_transaction_simplified.fee,
-    };
+void ui_display_transaction_simplified_flow_show(void) {
+    ui_validate_transaction_state_t *state = (ui_validate_transaction_state_t *) &g_ui_state;
 
-    if (g_ui_state.validate_transaction_simplified.warnings.high_fee) {
-        pairs[n_pairs++] = (nbgl_contentTagValue_t){.item = "Fees are above 10%\n of total amount",
-                                                    .value = "",
+    if (state->warnings.high_fee) {
+        pairs[n_pairs++] = (nbgl_contentTagValue_t){.item = GA_WARN_HIGH_FEES_TITLE,
+                                                    .value = GA_WARN_HIGH_FEES,
                                                     .centeredInfo = true,
                                                     .valueIcon = &ICON_APP_IMPORTANT};
     }
+
+    pairs[n_pairs++] = (nbgl_layoutTagValue_t){.item = "Fees",
+                                               .value = state->fee,
+                                               .forcePageStart = state->n_outputs > 1 ? 1 : 0};
 
     pairList.nbPairs = n_pairs;
 
@@ -241,28 +211,39 @@ void ui_accept_transaction_simplified_flow(void) {
                        start_transaction_callback);
 }
 
-void ui_display_transaction_prompt(void) {
+void ui_display_transaction_streaming_prompt(void) {
     nbgl_useCaseReviewStreamingStart(TYPE_TRANSACTION,
                                      &ICON_APP_ACTION,
                                      GA_REVIEW_TRANSACTION,
                                      NULL,
                                      start_transaction_callback);
+    ui_validate_transaction_state_t *state = (ui_validate_transaction_state_t *) &g_ui_state;
+
+    if (state->has_wallet_policy) {
+        pairs[0] = (nbgl_layoutTagValue_t){
+            .item = "From",
+            .value = state->wallet_policy_name,
+        };
+        // Setup list
+        pairList.nbMaxLinesForValue = 0;
+        pairList.nbPairs = 1;
+        pairList.pairs = pairs;
+
+        nbgl_useCaseReviewStreamingContinue(&pairList, start_transaction_callback);
+    }
 }
 
-void ui_display_output_address_amount_flow(int index) {
-    snprintf(g_ui_state.validate_output.index,
-             sizeof(g_ui_state.validate_output.index),
-             "#%d",
-             index);
+void ui_display_transaction_streaming_output_address_amount(void) {
+    ui_validate_transaction_state_t *state = (ui_validate_transaction_state_t *) &g_ui_state;
 
-    pairs[0].item = "Output";
-    pairs[0].value = g_ui_state.validate_output.index;
+    pairs[0].item = "Transaction output";
+    pairs[0].value = state->output_index_str[0];
 
     pairs[1].item = "Amount";
-    pairs[1].value = g_ui_state.validate_output.amount;
+    pairs[1].value = state->amount[0];
 
     pairs[2].item = "Address";
-    pairs[2].value = g_ui_state.validate_output.address_or_description;
+    pairs[2].value = state->address_or_description[0];
 
     // Setup list
     pairList.nbMaxLinesForValue = 0;
@@ -272,21 +253,46 @@ void ui_display_output_address_amount_flow(int index) {
     nbgl_useCaseReviewStreamingContinue(&pairList, start_transaction_callback);
 }
 
-void ui_display_output_address_amount_no_index_flow(int index) {
-    UNUSED(index);
-
-    pairs[0].item = "Amount";
-    pairs[0].value = g_ui_state.validate_output.amount;
-
-    pairs[1].item = "Address";
-    pairs[1].value = g_ui_state.validate_output.address_or_description;
-
+void ui_display_transaction_streaming_flow(bool is_self_transfer) {
     // Setup list
     pairList.nbMaxLinesForValue = 0;
-    pairList.nbPairs = 2;
     pairList.pairs = pairs;
 
-    nbgl_useCaseReviewStreamingContinue(&pairList, start_transaction_callback);
+    unsigned int l_n_pairs = 0;
+    ui_validate_transaction_state_t *state = (ui_validate_transaction_state_t *) &g_ui_state;
+
+    if (state->warnings.high_fee) {
+        pairs[l_n_pairs++] = (nbgl_contentTagValue_t){.item = GA_WARN_HIGH_FEES_TITLE,
+                                                      .value = GA_WARN_HIGH_FEES,
+                                                      .centeredInfo = true,
+                                                      .valueIcon = &ICON_APP_IMPORTANT};
+    }
+
+    if (!is_self_transfer) {
+        pairs[l_n_pairs].item = "Fees";
+        pairs[l_n_pairs++].value = state->fee;
+
+        pairList.nbPairs = l_n_pairs;
+    } else {
+        pairs[l_n_pairs].item = "Amount";
+        pairs[l_n_pairs++].value = "Self-transfer";
+
+        pairs[l_n_pairs].item = "Fees";
+        pairs[l_n_pairs++].value = state->fee;
+
+        pairList.nbPairs = l_n_pairs;
+    }
+
+    nbgl_useCaseReviewStreamingContinue(&pairList, finish_transaction_flow);
+}
+
+static void finish_transaction_flow(bool choice) {
+    if (choice) {
+        nbgl_useCaseReviewStreamingFinish(GA_SIGN_TRANSACTION,
+                                          start_processing_transaction_callback);
+    } else {
+        status_transaction_cancel();
+    }
 }
 
 // Continue light notify callback
@@ -339,7 +345,7 @@ void ui_display_register_wallet_policy_flow(void) {
     confirmed_status = "Account registered";
     rejected_status = "Account rejected";
 
-    int n_pairs = 0;
+    n_pairs = 0;
 
     pairList.nbMaxLinesForValue = 0;
     pairList.pairs = pairs;
@@ -379,182 +385,33 @@ void ui_display_register_wallet_policy_flow(void) {
                             status_operation_callback);
 }
 
-void ui_display_pubkey_suspicious_flow(void) {
-    confirmed_status = "Public key\napproved";
-    rejected_status = "Public key rejected";
-
+void ui_sign_message_and_confirm_flow(bool is_hash) {
     pairs[0].item = "Path";
-    pairs[0].value = g_ui_state.path_and_pubkey.bip32_path_str;
+    pairs[0].value = g_ui_state.path_and_message.bip32_path_str;
 
-    pairs[1].item = "Public key";
-    pairs[1].value = g_ui_state.path_and_pubkey.pubkey;
+    if (!is_hash) {
+#ifdef SCREEN_SIZE_WALLET
+        pairs[1].item = "Message content";
+#else
+        pairs[1].item = "Message";
+#endif
+    } else {
+        pairs[1].item = "Message hash";
+    }
 
-    // Setup list
-    pairList.nbMaxLinesForValue = 0;
+    pairs[1].value = g_ui_state.path_and_message.message;
+
+    pairList.wrapping = true;
     pairList.nbPairs = 2;
     pairList.pairs = pairs;
 
-    contentList[0].type = CENTERED_INFO;
-    contentList[0].content.centeredInfo.icon = &ICON_APP_ACTION;
-    contentList[0].content.centeredInfo.text1 = "Confirm public key";
-    contentList[0].content.centeredInfo.text2 = NULL;
-#ifdef SCREEN_SIZE_WALLET
-    contentList[0].content.centeredInfo.text3 = NULL;
-    contentList[0].content.centeredInfo.style = LARGE_CASE_BOLD_INFO;
-    contentList[0].content.centeredInfo.offsetY = 0;
-#else
-    contentList[0].content.centeredInfo.style = BOLD_TEXT1_INFO;
-#endif
-    contentList[0].contentActionCallback = NULL;
-
-    contentList[1].type = CENTERED_INFO;
-    contentList[1].content.centeredInfo.icon = &ICON_APP_IMPORTANT;
-    contentList[1].content.centeredInfo.text1 = "WARNING";
-    contentList[1].content.centeredInfo.text2 = "The derivation path\nis unusual";
-#ifdef SCREEN_SIZE_WALLET
-    contentList[1].content.centeredInfo.text3 = NULL;
-    contentList[1].content.centeredInfo.style = LARGE_CASE_BOLD_INFO;
-    contentList[1].content.centeredInfo.offsetY = 0;
-#else
-    contentList[1].content.centeredInfo.style = BOLD_TEXT1_INFO;
-#endif
-    contentList[1].contentActionCallback = NULL;
-
-    contentList[2].type = TAG_VALUE_LIST;
-    memcpy(&contentList[2].content.tagValueList, &pairList, sizeof(nbgl_layoutTagValueList_t));
-    contentList[2].contentActionCallback = NULL;
-
-    contentList[3].type = INFO_BUTTON;
-    contentList[3].content.infoButton.text = "Approve public key";
-    contentList[3].content.infoButton.icon = &ICON_APP_ACTION;
-#ifdef SCREEN_SIZE_WALLET
-    contentList[3].content.infoButton.buttonText = "Approve";
-#else
-    contentList[3].content.infoButton.buttonText = "";
-#endif
-    contentList[3].content.infoButton.buttonToken = REVIEW_CONFIRM;
-#ifdef HAVE_PIEZO_SOUND
-    contentList[3].content.infoButton.tuneId = TUNE_TAP_CASUAL;
-#endif
-    contentList[3].contentActionCallback = generic_content_callback;
-
-    genericContent.callbackCallNeeded = false;
-    genericContent.contentsList = contentList;
-    genericContent.nbContents = 4;
-
-    nbgl_useCaseGenericReview(&genericContent, "Cancel", status_operation_cancel);
-}
-
-static void message_finish_callback(bool confirm) {
-    if (confirm) {
-        nbgl_useCaseReviewStreamingFinish(GA_SIGN_MESSAGE, start_processing_message_callback);
-    } else {
-        status_message_cancel();
-    }
-}
-
-static void message_display_content_continue(bool confirm) {
-    if (confirm) {
-        increase_streaming_index();
-        ux_flow_response_true();
-    } else {
-        status_message_cancel();
-    }
-}
-
-static void message_display_content(bool confirm) {
-    if (confirm) {
-        pairList.pairs = pairs;
-        pairList.nbPairs = 0;
-
-        if (get_streaming_index() == 0) {
-            pairs[0].item = "Path";
-            pairs[0].value = g_ui_state.path_and_message.bip32_path_str;
-            pairList.nbPairs = 1;
-        }
-
-#ifdef SCREEN_SIZE_WALLET
-        pairs[pairList.nbPairs].item = "Message content";
-#else
-        pairs[pairList.nbPairs].item = "Message";
-#endif
-        pairs[pairList.nbPairs].value = g_ui_state.path_and_message.message;
-
-        pairList.wrapping = true;
-        pairList.nbPairs++;
-
-        nbgl_useCaseReviewStreamingContinue(&pairList, message_display_content_continue);
-    } else {
-        status_message_cancel();
-    }
-}
-
-static void message_display_path(bool confirm) {
-    if (confirm) {
-        pairs[0].item = "Path";
-        pairs[0].value = g_ui_state.path_and_message.bip32_path_str;
-
-        pairs[1].item = "Message hash";
-        pairs[1].value = g_ui_state.path_and_message.message;
-
-        pairList.nbPairs = 2;
-        pairList.pairs = pairs;
-
-        nbgl_useCaseReviewStreamingContinue(&pairList, message_finish_callback);
-    } else {
-        status_message_cancel();
-    }
-}
-
-void ui_sign_message_content_flow(void) {
-    if (show_message_start_page == true) {
-        show_message_start_page = false;
-        nbgl_useCaseReviewStreamingStart(TYPE_MESSAGE,
-                                         &ICON_APP_ACTION,
-                                         GA_REVIEW_MESSAGE,
-                                         NULL,
-                                         message_display_content);
-    } else {
-        message_display_content(true);
-    }
-}
-
-void ui_sign_message_path_hash_and_confirm_flow(void) {
-    nbgl_useCaseReviewStreamingStart(TYPE_MESSAGE,
-                                     &ICON_APP_ACTION,
-                                     GA_REVIEW_MESSAGE,
-                                     NULL,
-                                     message_display_path);
-}
-
-void ui_sign_message_confirm_flow(void) {
-    nbgl_useCaseReviewStreamingFinish(GA_SIGN_MESSAGE, start_processing_message_callback);
-}
-
-void ui_set_display_prompt(void) {
-    show_message_start_page = true;
-}
-
-void ui_display_spend_from_wallet_flow(void) {
-    confirmed_status = "Account name\nconfirmed";
-    rejected_status = "Account name rejected";
-
-    // Setup data to display
-    pairs[0].item = "Account name";
-    pairs[0].value = g_ui_state.wallet.wallet_name;
-
-    // Setup list
-    pairList.nbMaxLinesForValue = 0;
-    pairList.nbPairs = 1;
-    pairList.pairs = pairs;
-
-    nbgl_useCaseReviewLight(TYPE_OPERATION,
-                            &pairList,
-                            &ICON_APP_ACTION,
-                            "Spend from\nknown account",
-                            NULL,
-                            "Confirm account name",
-                            status_operation_callback);
+    nbgl_useCaseReview(TYPE_MESSAGE,
+                       &pairList,
+                       &ICON_APP_ACTION,
+                       GA_REVIEW_MESSAGE,
+                       NULL,
+                       GA_SIGN_MESSAGE,
+                       start_processing_message_callback);
 }
 
 // Address flow
@@ -567,41 +424,42 @@ void ui_display_default_wallet_address_flow(void) {
                               status_address_callback);
 }
 
-// Warning Flows
-void ui_warn_high_fee_flow(void) {
-    nbgl_useCaseChoice(&ICON_APP_IMPORTANT,
-                       "Warning",
-                       "Fees are above 10%\n of total amount",
-                       "Continue",
-                       "Reject",
+#ifdef SCREEN_SIZE_WALLET
+static void display_warning_generic_callback(bool confirm) {
+    if (!confirm) {
+        ux_flow_response_true();
+    } else {
+        status_transaction_cancel();
+    }
+}
+#endif /* #ifdef SCREEN_SIZE_WALLET */
+
+void ui_display_warning_generic(const char *msg) {
+    nbgl_useCaseChoice(&ICON_APP_WARNING,
+                       GA_SECURITY_RISK_TITLE,
+                       msg,
+#ifdef SCREEN_SIZE_WALLET
+                       GA_BACK_TO_SAFETY,
+                       GA_CONTINUE_ANYWAY,
+                       display_warning_generic_callback);
+#else
+                       GA_CONTINUE_ANYWAY,
+                       GA_BACK_TO_SAFETY,
                        start_transaction_callback);
+#endif /* #ifdef SCREEN_SIZE_WALLET */
 }
 
+// Warning/Security risks flows
 void ui_display_warning_external_inputs_flow(void) {
-    nbgl_useCaseChoice(&ICON_APP_IMPORTANT,
-                       "Warning",
-                       "There are external inputs",
-                       "Continue",
-                       "Reject if not sure",
-                       start_transaction_callback);
+    ui_display_warning_generic(GA_RISK_EXTERNAL_INPUTS);
 }
 
 void ui_display_unverified_segwit_inputs_flows(void) {
-    nbgl_useCaseChoice(&ICON_APP_IMPORTANT,
-                       "Warning",
-                       GA_UNVERIFIED_INPUTS,
-                       "Continue",
-                       "Reject if not sure",
-                       start_transaction_callback);
+    ui_display_warning_generic(GA_RISK_UNVERIFIED_INPUTS);
 }
 
 void ui_display_nondefault_sighash_flow(void) {
-    nbgl_useCaseChoice(&ICON_APP_IMPORTANT,
-                       "Warning",
-                       "Non-default sighash",
-                       "Continue",
-                       "Reject if not sure",
-                       start_transaction_callback);
+    ui_display_warning_generic(GA_RISK_NON_STD_SIGHASH);
 }
 
 // Statuses

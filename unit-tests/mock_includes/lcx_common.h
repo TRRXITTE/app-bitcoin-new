@@ -41,6 +41,9 @@ typedef struct uint64_s uint64bits_t;
 typedef uint64_t uint64bits_t;
 #endif
 
+/** Type of error code */
+typedef uint32_t cx_err_t;
+
 /**
  * Some function take logical or of various flags. The follwing flags are
  * globally defined:

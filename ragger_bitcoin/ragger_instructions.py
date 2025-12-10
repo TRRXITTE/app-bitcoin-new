@@ -1,5 +1,6 @@
 from ragger.navigator import NavInsID
 
+MAX_EXT_OUTPUT_SIMPLIFIED_NUMBER = 16
 
 class Instructions:
     def __init__(self, model):
@@ -43,12 +44,12 @@ class Instructions:
                         save_screenshot=save_screenshot)
 
         if has_warning:
-            self.same_request("Warning", NavInsID.USE_CASE_REVIEW_TAP, NavInsID.USE_CASE_CHOICE_CONFIRM,
+            self.same_request("Security risk detected", NavInsID.USE_CASE_REVIEW_TAP, NavInsID.USE_CASE_REVIEW_TAP,
                             save_screenshot=save_screenshot)
 
         for output_index in range(0, output_count):
-            # the initial 2 outputs are cached; that depends on the N_CACHED_EXTERNAL_OUTPUTS constant
-            if output_index < 2:
+            # the initial N_CACHED_EXTERNAL_OUTPUTS outputs are cached, so it is the same request
+            if output_index < MAX_EXT_OUTPUT_SIMPLIFIED_NUMBER:
                 self.same_request("Amount", NavInsID.USE_CASE_REVIEW_TAP, NavInsID.USE_CASE_REVIEW_TAP,
                             save_screenshot=save_screenshot)
             else:
@@ -69,13 +70,10 @@ class Instructions:
                          NavInsID.USE_CASE_STATUS_DISMISS,
                          save_screenshot=save_screenshot)
 
-    def review_message(self, page_count=1, save_screenshot=True):
+    def review_message(self, save_screenshot=True):
         self.new_request("Review", NavInsID.USE_CASE_REVIEW_TAP,
                          NavInsID.USE_CASE_REVIEW_TAP, save_screenshot=save_screenshot)
         self.same_request("Message", NavInsID.USE_CASE_REVIEW_TAP,
-                         NavInsID.USE_CASE_REVIEW_TAP, save_screenshot=save_screenshot)
-        for _ in range(1, page_count):
-            self.new_request("Message", NavInsID.USE_CASE_REVIEW_TAP,
                          NavInsID.USE_CASE_REVIEW_TAP, save_screenshot=save_screenshot)
 
     def confirm_message(self, save_screenshot=True):
@@ -107,18 +105,12 @@ class Instructions:
         self.same_request("Address verified", NavInsID.USE_CASE_REVIEW_TAP, NavInsID.CANCEL_FOOTER_TAP,
                 save_screenshot=save_screenshot)
 
-    def choice_confirm(self, save_screenshot=True):
-        self.new_request("Approve", NavInsID.USE_CASE_REVIEW_TAP, NavInsID.USE_CASE_CHOICE_CONFIRM,
+    def choice_confirm(self, confirm_text = "Approve", save_screenshot=True):
+        self.new_request(confirm_text, NavInsID.USE_CASE_REVIEW_TAP, NavInsID.USE_CASE_CHOICE_CONFIRM,
                          save_screenshot=save_screenshot)
 
-    def choice_reject(self, save_screenshot=True):
-        self.new_request("Approve", NavInsID.USE_CASE_REVIEW_TAP, NavInsID.USE_CASE_CHOICE_REJECT,
-                         save_screenshot=save_screenshot)
-
-    def footer_cancel(self, save_screenshot=True):
-        self.new_request("Confirm", NavInsID.USE_CASE_REVIEW_TAP, NavInsID.CANCEL_FOOTER_TAP,
-                         save_screenshot=save_screenshot)
-        self.new_request("rejected", NavInsID.USE_CASE_REVIEW_TAP, NavInsID.USE_CASE_STATUS_DISMISS,
+    def choice_reject(self, reject_text = "Approve", save_screenshot=True):
+        self.new_request(reject_text, NavInsID.USE_CASE_REVIEW_TAP, NavInsID.USE_CASE_CHOICE_REJECT,
                          save_screenshot=save_screenshot)
 
     def status_dismiss(self, text, status_on_same_request=True, save_screenshot=True):
