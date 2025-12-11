@@ -88,9 +88,6 @@ def test_get_extended_pubkey_non_standard(navigator: Navigator, firmware: Firmwa
     # (Slow test, not feasible to repeat it for many paths)
 
     # The test will be re-enabled for Speculos once the installation parameters are supported
-    if isinstance(client.transport_client, SpeculosBackend):
-        pytest.skip("The test derives key at root level - now prohibited and the reinforcement is not yet implemented in Speculos.")
-
     # Deriving a key at root level without HAVE_APPLICATION_FLAG_DERIVE_MASTER permission
     with pytest.raises(ExceptionRAPDU) as e:
         pub_key = client.get_extended_pubkey(
@@ -103,6 +100,7 @@ def test_get_extended_pubkey_non_standard(navigator: Navigator, firmware: Firmwa
     assert DeviceException.exc.get(e.value.status) == NotSupportedError
     assert len(e.value.data) == 0
     # Deriving a key at unauthorized path
+    # The below part does not raise exception when built with COIN=bitcoin_recovery as all paths are permitted
     with pytest.raises(ExceptionRAPDU) as e:
         pub_key = client.get_extended_pubkey(
             path="m/44'/2'/333'",  # root pubkey
