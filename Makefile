@@ -46,7 +46,7 @@ endif
 
 # Setting to allow building variant applications
 VARIANT_PARAM = COIN
-VARIANT_VALUES = bitcoin_testnet bitcoin
+VARIANT_VALUES = bitcoin_testnet bitcoin bitcoin_recovery
 
 # simplify for tests
 ifndef COIN
@@ -73,6 +73,7 @@ ifeq ($(COIN),bitcoin_testnet)
     DEFINES   += COIN_COINID_SHORT=\"TEST\"
 
     APPNAME = "Bitcoin Test"
+
 else ifeq ($(COIN),bitcoin)
     # Application allowed derivation paths (mainnet).
     PATH_APP_LOAD_PARAMS = "*/0'"
@@ -92,6 +93,26 @@ else ifeq ($(COIN),bitcoin)
     DEFINES   += COIN_COINID_SHORT=\"BTC\"
 
     APPNAME = "Bitcoin"
+
+else ifeq ($(COIN),bitcoin_recovery)
+    # Application allowed derivation paths (all paths are permitted).
+    PATH_APP_LOAD_PARAMS = ""
+
+    # the version for performance tests automatically approves all requests
+    # there is no reason to ever compile the mainnet app with this flag
+    ifneq ($(AUTOAPPROVE_FOR_PERF_TESTS),0)
+        $(error Use testnet app for performance tests)
+    endif
+
+    # Bitcoin mainnet, no legacy support
+    DEFINES   += BIP32_PUBKEY_VERSION=0x0488B21E
+    DEFINES   += BIP44_COIN_TYPE=0
+    DEFINES   += COIN_P2PKH_VERSION=0
+    DEFINES   += COIN_P2SH_VERSION=5
+    DEFINES   += COIN_NATIVE_SEGWIT_PREFIX=\"bc\"
+    DEFINES   += COIN_COINID_SHORT=\"BTC\"
+
+    APPNAME = "Bitcoin Recovery"
 
 else
     ifeq ($(filter clean,$(MAKECMDGOALS)),)
