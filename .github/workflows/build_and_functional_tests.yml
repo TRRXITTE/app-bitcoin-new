@@ -45,6 +45,7 @@ jobs:
       - name: Build
         run: |
           cd bitcoin_client_js
+          yarn install
           yarn build && yarn pack
 
   ragger_tests:
