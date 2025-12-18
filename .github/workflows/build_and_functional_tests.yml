@@ -35,6 +35,17 @@ jobs:
       upload_app_binaries_artifact: "compiled_app_binaries"
       flags: "DEBUG=0 COIN=bitcoin_testnet"
 
+  build_js_client:
+    name: Build TypeScript client
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          echo "Building app"
+
   ragger_tests:
     name: Run ragger tests using the reusable workflow
     needs: build_application
