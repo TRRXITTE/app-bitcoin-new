@@ -3,6 +3,7 @@
   "version": "0.3.0",
   "description": "Ledger Hardware Wallet Bitcoin Application Client",
   "main": "build/main/index.js",
+  "types": "build/main/index.d.ts",
   "typings": "build/main/index.d.ts",
   "repository": "https://github.com/LedgerHQ/app-bitcoin-new",
   "license": "Apache-2.0",
@@ -17,6 +18,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf build .tsbuildinfo",
     "fix": "run-s fix:*",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "fix:lint": "eslint src --ext .ts --fix",
@@ -62,13 +64,9 @@
     "typescript": "^4.9.5"
   },
   "files": [
-    "build/main",
-    "!**/*.spec.*",
-    "!**/*.test.*",
-    "!**/*.json",
-    "!**/__tests__/*",
-    "CHANGELOG.md",
-    "README.md"
+    "build/",
+    "README.md",
+    "package.json"
   ],
   "prettier": {
     "singleQuote": true
