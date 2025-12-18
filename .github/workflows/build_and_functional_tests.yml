@@ -37,7 +37,11 @@ jobs:
 
   build_js_client:
     name: Build TypeScript client
-    runs-on: ubuntu-latest
+    runs-on: public-ledgerhq-shared-small
+    permissions:
+      id-token: write
+      attestations: write
+      contents: write
     steps:
       - name: Checkout codebase
         uses: actions/checkout@v4
@@ -45,8 +49,13 @@ jobs:
       - name: Build
         run: |
           cd bitcoin_client_js
-          yarn install
-          yarn build && yarn pack
+          yarn install && yarn build && yarn pack
+
+      - name: Login to Ledger Artifactory
+        if: success() # && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        timeout-minutes: 10
+        id: jfrog-login
+        uses: LedgerHQ/actions-security/actions/jfrog-login@actions/jfrog-login-1
 
   ragger_tests:
     name: Run ragger tests using the reusable workflow
