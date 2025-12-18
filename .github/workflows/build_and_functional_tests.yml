@@ -44,7 +44,8 @@ jobs:
 
       - name: Build
         run: |
-          echo "Building app"
+          cd bitcoin_client_js
+          yarn build && yarn pack
 
   ragger_tests:
     name: Run ragger tests using the reusable workflow
