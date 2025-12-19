@@ -93,9 +93,23 @@ else ifeq ($(COIN),bitcoin)
 
     APPNAME = "Bitcoin"
 
+else ifeq ($(COIN),nintondo)
+    # Nintondo (legacy-only, no SegWit)
+    PATH_APP_LOAD_PARAMS = "*/3'" "4541509'" "45'"
+
+    DEFINES   += BIP32_PUBKEY_VERSION=0x02FACAFD
+    DEFINES   += BIP44_COIN_TYPE=3
+    DEFINES   += COIN_P2PKH_VERSION=53
+    DEFINES   += COIN_P2SH_VERSION=65
+    DEFINES   += COIN_NATIVE_SEGWIT_PREFIX=\"nintondo-disabled\"
+    DEFINES   += COIN_COINID_SHORT=\"NIN\"
+    DEFINES   += DISABLE_SEGWIT=1
+
+    APPNAME = "Nintondo"
+
 else
     ifeq ($(filter clean,$(MAKECMDGOALS)),)
-        $(error Unsupported COIN - use bitcoin_testnet, bitcoin)
+        $(error Unsupported COIN - use bitcoin_testnet, bitcoin, nintondo)
     endif
 endif
 
@@ -109,11 +123,11 @@ ENABLE_NBGL_FOR_NANO_DEVICES = 1
 
 # Application icons following guidelines:
 # https://developers.ledger.com/docs/embedded-app/design-requirements/#device-icon
-ICON_NANOX = icons/nanox_app_bitcoin.gif
-ICON_NANOSP = icons/nanox_app_bitcoin.gif
-ICON_STAX = icons/stax_app_bitcoin.gif
-ICON_FLEX = icons/flex_app_bitcoin.gif
-ICON_APEX_P = icons/apex_p_app_bitcoin.png
+ICON_NANOX = icons/nanox_app_nintondo.gif
+ICON_NANOSP = icons/nanosp_app_nintondo.gif
+ICON_STAX = icons/stax_app_nintondo.gif
+ICON_FLEX = icons/flex_app_nintondo.gif
+ICON_APEX_P = icons/apex_p_app_nintondo.gif
 
 ########################################
 # Application communication interfaces #

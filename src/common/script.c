@@ -81,6 +81,7 @@ int get_script_address(const uint8_t script[], size_t script_len, char *out, siz
             }
             break;
         }
+#ifndef DISABLE_SEGWIT
         case SCRIPT_TYPE_P2WPKH:
         case SCRIPT_TYPE_P2WSH:
         case SCRIPT_TYPE_P2TR:
@@ -105,6 +106,7 @@ int get_script_address(const uint8_t script[], size_t script_len, char *out, siz
             addr_len = strlen(out);
             break;
         }
+#endif
         default:
             return -1;
     }
