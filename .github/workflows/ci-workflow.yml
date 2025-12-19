@@ -297,3 +297,11 @@ jobs:
         run: |
           cd bitcoin_client_rs/
           cargo test --no-default-features --features="async"
+
+  deploy_js_client:
+    name: Deploy js client to jfrog and npmjs.com
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_deployment_npm.yml@mbr/reusable-workflow-jfrog-npm
+    with:
+      package_name: "ledger-bitcoin"
+      package_directory: "bitcoin_client_js"
+      publish: true
